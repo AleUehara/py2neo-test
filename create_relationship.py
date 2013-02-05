@@ -1,26 +1,96 @@
 #!/usr/bin/env python
- 
-"""
-Simple example showing node and relationship creation plus
-execution of Cypher queries
-"""
- 
-#from __future__ import print_function
- 
-# Import Neo4j modules
+import os
+from connectiondb import Connection
+from utils_enum import RelationshipType
 from py2neo import neo4j, cypher
 
-graph_db = neo4j.GraphDatabaseService("http://localhost:7474/db/data/")
+#docs -->http://packages.python.org/py2neo/neo4j.html
 
-node_a = graph_db.get_node(4)
-node_b = graph_db.get_node(1)
+class Relationship():
+	def __init__(self, database):
+		self.database = database
 
-print node_a["name"]
-print node_b["name"]
+	def create(self, person1, person2, relationship_type):
+		try:
+			rel_ab = person1.create_relationship_to(person2, relationship_type)
+		except Exception, e:
+			print "Erro: " + str(e)
 
-try:
-	rel_ab = node_a.create_relationship_to(node_b, "knows")
-except Exception, e:
-	print e
 
-print "Criado com sucesso"
+class Actor():
+	def __init__(self, database, node_number=None):
+		self.database = database
+		if not node_number == None:
+			self.person   = self.__set_node_number(node_number)
+
+	def __set_node_number(self, node_number):
+		return self.database.get_node(node_number)
+	
+	def get_name(self):
+		print self.person["name"]
+
+	def get_jobs(self):
+		print self.person["jobs"]
+
+	def get_relationships(self):
+		for relationship in self.person.get_relationships():
+			#print relationship.type
+			for node in relationship.nodes:
+				if not node["name"] == self.person["name"]:
+					print relationship.type + " " +node["name"]
+			print '------------'
+
+	def get_related_with(self):
+		for node in self.person.get_related_nodes():
+			print "-" + node["name"]
+
+	def create(self, name, jobs):
+		 self.database.create({"name": name,
+		 	                  "jobs": jobs
+		 	                 })
+
+#----------------------------------------
+#Init
+#----------------------------------------
+def create_relationship(database):
+	person1 = database.get_node(4)
+	person2 = database.get_node(1)
+	Relationship(database).create(person1, person2, RelationshipType.DATED)
+
+def select_person(database):
+	Actor(database, 4).get_name()
+	Actor(database, 4).get_jobs()
+	Actor(database, 4).get_relationships()
+	Actor(database, 4).get_related_with()
+
+def create_person(database):
+	Actor(database).create("Marcio Lima", ["recruiter", "model"])
+
+def find_person(database):
+	node = cypher.execute(database, "START n=node(*) WHERE n.name! = 'Marcio Lima' RETURN n")
+	actor_id = node[0][0][0].id
+	Actor(database, actor_id).get_name()
+	Actor(database, actor_id).get_jobs()
+
+def main():
+	database = Connection().get_instance()
+	#create_relationship(database)
+	#select_person(database)
+	#create_person(database)
+	find_person(database)
+
+
+
+
+	
+	
+
+
+
+if __name__ == "__main__":
+    try:
+    	main()
+    except Exception, e:
+        print e
+
+
