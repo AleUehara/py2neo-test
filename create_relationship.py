@@ -12,7 +12,7 @@ class Relationship():
 
 	def create(self, person1, person2, relationship_type):
 		try:
-			rel_ab = person1.create_relationship_to(person2, relationship_type)
+			rel_ab = person1.create_relationship_to(person2, relationship_type, {'links': ['teste']})
 		except Exception, e:
 			print "Erro: " + str(e)
 
@@ -38,7 +38,8 @@ class Actor():
 			for node in relationship.nodes:
 				if not node["name"] == self.person["name"]:
 					print relationship.type + " " +node["name"]
-			print '------------'
+					print relationship.get_properties().get('links')
+		print '------------'
 
 	def get_related_with(self):
 		for node in self.person.get_related_nodes():
@@ -49,35 +50,59 @@ class Actor():
 		 	                  "jobs": jobs
 		 	                 })
 
+	def find_all_contains(self, name):
+		node = cypher.execute(self.database, "START n=node(*) WHERE n.name! =~ '.*"+ name +".*' RETURN n")
+
+		actor_id = ''
+		if len(node) > 0:
+			actors = node[0]
+		return actors
+
+	def find_by_name(self, name):
+		node = cypher.execute(self.database, "START n=node(*) WHERE n.name! = '"+name+"' RETURN n")
+		actor_id = ''
+		if len(node) > 0:
+			actor_id = node[0][0][0].id
+			print actor_id
+		return actor_id
+
 #----------------------------------------
 #Init
 #----------------------------------------
 def create_relationship(database):
-	person1 = database.get_node(4)
+	person1 = database.get_node(20505)
 	person2 = database.get_node(1)
 	Relationship(database).create(person1, person2, RelationshipType.DATED)
 
-def select_person(database):
-	Actor(database, 4).get_name()
-	Actor(database, 4).get_jobs()
-	Actor(database, 4).get_relationships()
-	Actor(database, 4).get_related_with()
+def select_person(database, actorid):
+	Actor(database, actorid).get_name()
+	Actor(database, actorid).get_jobs()
+	Actor(database, actorid).get_relationships()
+	Actor(database, actorid).get_related_with()
 
 def create_person(database):
 	Actor(database).create("Marcio Lima", ["recruiter", "model"])
 
 def find_person(database):
-	node = cypher.execute(database, "START n=node(*) WHERE n.name! = 'Marcio Lima' RETURN n")
-	actor_id = node[0][0][0].id
-	Actor(database, actor_id).get_name()
-	Actor(database, actor_id).get_jobs()
+	name = 'Marcio Lima'
+	actorid = Actor(database).find_by_name(name)
+	Actor(database, actorid).get_name()
+	Actor(database, actorid).get_jobs()
+
+def find_all_persons_that_contains_a_letter(database):
+	name = 'An'
+	for actor in Actor(database).find_all_contains(name):
+		actorid = actor[0].id
+		Actor(database, actorid).get_name()
+		Actor(database, actorid).get_relationships()
 
 def main():
 	database = Connection().get_instance()
 	#create_relationship(database)
-	#select_person(database)
+	select_person(database, 20505)
 	#create_person(database)
-	find_person(database)
+	#find_person(database)
+	#find_all_persons_that_contains_a_letter(database)
 
 
 
